@@ -1,0 +1,1300 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAP S/4HANA MCQ Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .question-card {
+            transition: all 0.3s ease;
+        }
+        .question-card:hover {
+            transform: translateY(-2px);
+        }
+        .option-label {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .option-label:hover {
+            background-color: #e5e7eb;
+        }
+        .selected {
+            background-color: #bfdbfe;
+        }
+        .correct {
+            background-color: #d1fae5;
+        }
+        .incorrect {
+            background-color: #fee2e2;
+        }
+        #question-nav a.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <header class="bg-blue-600 text-white py-4 shadow-md">
+        <div class="container mx-auto px-4">
+            <h1 class="text-2xl md:text-3xl font-bold">SAP S/4HANA Certification MCQ Quiz</h1>
+            <p class="mt-1 text-sm md:text-base">Test your knowledge with 80 questions</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 flex-grow">
+        <div class="flex flex-col md:flex-row gap-6">
+            <!-- Question Navigation -->
+            <aside class="md:w-1/4 bg-white p-4 rounded-lg shadow-md">
+                <h2 class="text-lg font-semibold mb-4">Question Navigation</h2>
+                <div id="question-nav" class="grid grid-cols-5 gap-2">
+                    <!-- Question numbers will be populated by JS -->
+                </div>
+            </aside>
+
+            <!-- Questions Section -->
+            <section class="md:w-3/4">
+                <div id="questions-container" class="space-y-6">
+                    <!-- Questions will be populated by JS -->
+                </div>
+                <div class="mt-8 flex justify-between">
+                    <button id="prev-btn" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 disabled:opacity-50" disabled>Previous</button>
+                    <button id="next-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Next</button>
+                    <button id="submit-btn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 hidden">Submit Quiz</button>
+                </div>
+            </section>
+        </div>
+
+        <!-- Results Section -->
+        <section id="results-section" class="mt-8 bg-white p-6 rounded-lg shadow-md hidden">
+            <h2 class="text-xl font-semibold mb-4">Quiz Results</h2>
+            <p id="score" class="text-lg mb-4"></p>
+            <div id="results-details" class="space-y-4"></div>
+            <button id="restart-btn" class="mt-6 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Restart Quiz</button>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white py-4">
+        <div class="container mx-auto px-4 text-center">
+            <p>© 2025 SAP S/4HANA MCQ Quiz. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        const originalQuestions = [
+            {
+                id: 1,
+                text: "Which documents does SAP Transportation Management support when planning transportation with SAP S/4HANA? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'Material documents' },
+                    { text: 'Stock transport orders' },
+                    { text: 'Transfer orders' },
+                    { text: 'Inbound deliveries' },
+                    { text: 'Returns' }
+                ],
+                correct: [1, 3, 4], // Indices of correct options
+                type: 'multiple'
+            },
+            {
+                id: 2,
+                text: "What is the result of posting a vendor's invoice?",
+                options: [
+                    { text: 'The material ledger document is generated' },
+                    { text: "The vendor's account is cleared of open items" },
+                    { text: 'The purchase order history is updated' },
+                    { text: 'Vendor payment is posted' }
+                ],
+                correct: [2],
+                type: 'single'
+            },
+            {
+                id: 3,
+                text: "For which object do you plan activity prices?",
+                options: [
+                    { text: 'Cost center' },
+                    { text: 'Work center' },
+                    { text: 'WBS element' },
+                    { text: 'Internal order' }
+                ],
+                correct: [0],
+                type: 'single'
+            },
+            {
+                id: 4,
+                text: "You've been tasked with converting SAP Fiori Tile groups to SAP Fiori Spaces. Which of the following assignments should be made?",
+                options: [
+                    { text: 'Assign Tiles to Pages' },
+                    { text: 'Assign Spaces to Pages' },
+                    { text: 'Assign Pages to Spaces' },
+                    { text: 'Assign Sections to Spaces' }
+                ],
+                correct: [2],
+                type: 'single'
+            },
+            {
+                id: 5,
+                text: "What is created when you post a valuated goods receipt for consumable materials?",
+                options: [
+                    { text: 'Material ledger document' },
+                    { text: 'Vendor invoice document' },
+                    { text: 'Controlling document' },
+                    { text: 'Commitment' }
+                ],
+                correct: [2],
+                type: 'single'
+            },
+            {
+                id: 6,
+                text: "Which of the following is the basic organizational unit in Management Accounting?",
+                options: [
+                    { text: 'Cost Center' },
+                    { text: 'Client' },
+                    { text: 'Company Code' },
+                    { text: 'Controlling Area' }
+                ],
+                correct: [3],
+                type: 'single'
+            },
+            {
+                id: 7,
+                text: "You post an invoice to purchase a company car. What accounts are posted in the journal entry? Note: There are 3 correct answers to this question.",
+                options: [
+                    { text: 'Supplier account' },
+                    { text: 'Asset account' },
+                    { text: 'Material account' },
+                    { text: 'Tax account' },
+                    { text: 'Customer account' }
+                ],
+                correct: [0, 1, 3],
+                type: 'multiple'
+            },
+            {
+                id: 8,
+                text: "Which of the following is a permitted hierarchical structure for Management Accounting in the SAP S/4HANA enterprise structure?",
+                options: [
+                    { text: 'A controlling area is assigned to a plant' },
+                    { text: 'A controlling area is assigned to an operating concern' },
+                    { text: 'An operating concern is assigned to a company code' },
+                    { text: 'An operating concern is assigned to a controlling area' }
+                ],
+                correct: [1],
+                type: 'single'
+            },
+            {
+                id: 9,
+                text: "Why might you create an equipment master record? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'To report the usage time of an object at a functional location' },
+                    { text: 'To perform and record maintenance tasks for certain parts of your technical system for long-term evaluation' },
+                    { text: 'To functionally represent the technical system structures at your company' },
+                    { text: 'To collect and evaluate technical data for an object over a long period of time' }
+                ],
+                correct: [1, 3],
+                type: 'multiple'
+            },
+            {
+                id: 10,
+                text: "What is the result of document splitting?",
+                options: [
+                    { text: 'Additional logistical documents are created' },
+                    { text: 'Additional controlling documents are created' },
+                    { text: 'Additional values are created' },
+                    { text: 'Additional financial documents are created' }
+                ],
+                correct: [3],
+                type: 'single'
+            },
+            {
+                id: 11,
+                text: "What are some of the functions of SAP Extended Warehouse Management? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Putaway with transfer orders' },
+                    { text: 'Mobile device integration' },
+                    { text: 'Storage-bin-level determination for incoming goods' },
+                    { text: 'Inventory management at storage location level' }
+                ],
+                correct: [1, 2],
+                type: 'multiple'
+            },
+            {
+                id: 12,
+                text: "What object is created to report on market characteristics, such as customer, product, and region?",
+                options: [
+                    { text: 'Sales organization' },
+                    { text: 'Profit center' },
+                    { text: 'Profitability segment' },
+                    { text: 'Segment' }
+                ],
+                correct: [2],
+                type: 'single'
+            },
+            {
+                id: 13,
+                text: "What must you do in a purchase order to purchase a material for a cost center?",
+                options: [
+                    { text: 'Enter a purchase order item category' },
+                    { text: 'Enter a storage location' },
+                    { text: 'Enter an activity type for the cost center in the purchasing document' },
+                    { text: 'Enter an account assignment category' }
+                ],
+                correct: [0, 3],
+                type: 'multiple'
+            },
+            {
+                id: 14,
+                text: "You have found a new source of supply for a material. When maintaining the Business Partner information for the Supplier role, which organizational unit should be extended?",
+                options: [
+                    { text: 'Purchasing Organization' },
+                    { text: 'Company Code' },
+                    { text: 'Plant' },
+                    { text: 'Purchasing Group' }
+                ],
+                correct: [0],
+                type: 'single'
+            },
+            {
+                id: 15,
+                text: "What type of document is generated for an external network activity?",
+                options: [
+                    { text: 'Production order' },
+                    { text: 'Sales order' },
+                    { text: 'Reservation' },
+                    { text: 'Purchase requisition' }
+                ],
+                correct: [3],
+                type: 'single'
+            },
+            {
+                id: 16,
+                text: "What general ledger accounts receive postings when performing the goods receipt? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Vendor reconciliation account' },
+                    { text: 'Tax Account' },
+                    { text: 'Consumption account' },
+                    { text: 'GR/IR account' }
+                ],
+                correct: [0, 3],
+                type: 'multiple'
+            },
+            {
+                id: 17,
+                text: "In a project, what is the correct term for a group of dependencies, activities, and relationships sequenced in chronological order?",
+                options: [
+                    { text: 'Work breakdown structure' },
+                    { text: 'Project planning' },
+                    { text: 'Routing' },
+                    { text: 'Network' }
+                ],
+                correct: [3],
+                type: 'single'
+            },
+            {
+                id: 18,
+                text: "Which of the following applies to Sales and Distribution enterprise structures? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'A division can only be assigned to one sales organization' },
+                    { text: 'A sales organization can only be assigned to one company code' },
+                    { text: 'A sales organization can be assigned to more than one company code' },
+                    { text: 'A distribution channel can be assigned to many sales organizations' },
+                    { text: 'A division can be assigned to more than one sales organization' }
+                ],
+                correct: [2, 3, 4],
+                type: 'multiple'
+            },
+            {
+                id: 19,
+                text: "What action assigns actual costs to a project?",
+                options: [
+                    { text: 'Material availability check' },
+                    { text: 'Saving a purchase order' },
+                    { text: 'Material withdrawal from stock' },
+                    { text: 'Releasing a project budget' }
+                ],
+                correct: [3],
+                type: 'single'
+            },
+            {
+                id: 20,
+                text: "You purchase raw materials with a purchase order against a cost center. During which process step are financial accounting documents posted?",
+                options: [
+                    { text: 'Save purchase order' },
+                    { text: 'Approval of purchase requisition' },
+                    { text: 'Inbound delivery to warehouse' },
+                    { text: 'Post valuated goods receipt' }
+                ],
+                correct: [3],
+                type: 'single'
+            },
+            {
+                id: 21,
+                text: "Which SAP Suite line-of-business solution can be used to enhance the procurement of external services?",
+                options: [
+                    { text: 'SAP Ariba' },
+                    { text: 'SAP Concur Travel and Expense' },
+                    { text: 'SAP SuccessFactors' },
+                    { text: 'SAP Fieldglass' }
+                ],
+                correct: [3],
+                type: 'single'
+            },
+            {
+                id: 22,
+                text: "What does a work center control? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Availability of capacity' },
+                    { text: 'Calculation of costs of work performed' },
+                    { text: 'Release of production orders' },
+                    { text: 'Valuation of bill of material components' }
+                ],
+                correct: [0, 1],
+                type: 'multiple'
+            },
+            {
+                id: 23,
+                text: "What are the benefits of using a business partner in SAP S/4HANA? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Vendors are managed separately from customers' },
+                    { text: 'Redundant data is reduced' },
+                    { text: 'Data architecture is harmonized' },
+                    { text: 'General data is unique to each assigned role' }
+                ],
+                correct: [1, 2],
+                type: 'multiple'
+            },
+            {
+                id: 24,
+                text: "You have created an equipment master record. What other master data record can be created automatically?",
+                options: [
+                    { text: 'Functional location' },
+                    { text: 'Material' },
+                    { text: 'Asset' },
+                    { text: 'Maintenance BOM' }
+                ],
+                correct: [2],
+                type: 'single'
+            },
+            {
+                id: 25,
+                text: "Which action updates the costing-based profitability analysis?",
+                options: [
+                    { text: 'Post goods issue' },
+                    { text: 'Save the billing document' },
+                    { text: "Post the customer's payment" },
+                    { text: 'Create the outbound delivery' }
+                ],
+                correct: [2],
+                type: 'single'
+            },
+            {
+                id: 26,
+                text: "Which of the following are advantages of the SAP Business Technology Platform? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'Unified application development environment' },
+                    { text: 'Optimized for any software' },
+                    { text: 'Uses the latest machine learning innovations' },
+                    { text: 'Uses SAP Fiori Spaces' },
+                    { text: 'Flexible workflows' }
+                ],
+                correct: [0, 2, 4],
+                type: 'multiple'
+            },
+            {
+                id: 27,
+                text: "Which of the following can be maintained in a maintenance notification? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'Materials planning' },
+                    { text: 'Capacity requirements' },
+                    { text: 'Tasks' },
+                    { text: 'Cause of damage' },
+                    { text: 'Equipment' }
+                ],
+                correct: [2, 3, 4],
+                type: 'multiple'
+            },
+            {
+                id: 28,
+                text: "What is the purpose of using a Work Breakdown Structure (WBS)? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'To evaluate aggregated data' },
+                    { text: 'To schedule warehouse tasks' },
+                    { text: 'To manage equipment' },
+                    { text: 'To allocate budgets' },
+                    { text: 'To define responsibilities' }
+                ],
+                correct: [0, 3, 4],
+                type: 'multiple'
+            },
+            {
+                id: 29,
+                text: "What elements are recorded during an overall completion confirmation of a maintenance order? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'Time entry' },
+                    { text: 'Measuring documents' },
+                    { text: 'Availability check' },
+                    { text: 'Materials' },
+                    { text: 'Invoicing' }
+                ],
+                correct: [0, 1, 3],
+                type: 'multiple'
+            },
+            {
+                id: 30,
+                text: "What tasks are performed for external reporting purposes? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Manage accounts receivables' },
+                    { text: 'Calculate production variances' },
+                    { text: 'Create a profit and loss statement' },
+                    { text: 'Create cost center plan/actual statements' }
+                ],
+                correct: [2, 3],
+                type: 'multiple'
+            },
+            {
+                id: 31,
+                text: "What is the timeframe of SAP SuccessFactors release cycles?",
+                options: [
+                    { text: 'Bi-annually' },
+                    { text: 'Monthly' },
+                    { text: 'Annually' },
+                    { text: 'Quarterly' }
+                ],
+                correct: [0],
+                type: 'single'
+            },
+            {
+                id: 32,
+                text: "To what object can you settle an internal order?",
+                options: [
+                    { text: 'Statistical key figure' },
+                    { text: 'Equipment' },
+                    { text: 'Profit center' },
+                    { text: 'Fixed asset' }
+                ],
+                correct: [3],
+                type: 'single'
+            },
+            {
+                id: 33,
+                text: "When running MRP, what setting in the material master determines if a material will be procured or produced?",
+                options: [
+                    { text: 'Procurement type' },
+                    { text: 'Purchasing group' },
+                    { text: 'MRP type' },
+                    { text: 'Processing key' }
+                ],
+                correct: [2],
+                type: 'single'
+            },
+            {
+                id: 34,
+                text: "What transactions credit a production order? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Goods receipt' },
+                    { text: 'Material withdrawal' },
+                    { text: 'Confirmation' },
+                    { text: 'Order settlement' }
+                ],
+                correct: [2, 3],
+                type: 'multiple'
+            },
+            {
+                id: 35,
+                text: "Which organizational units do you create for Financial Accounting (FI) in SAP S/4HANA Finance? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Operating concern' },
+                    { text: 'Controlling area' },
+                    { text: 'Segment' },
+                    { text: 'Company code' }
+                ],
+                correct: [2, 3],
+                type: 'multiple'
+            },
+            {
+                id: 36,
+                text: "During the production order process, what steps can be executed via background processing? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'Order release' },
+                    { text: 'Order settlement' },
+                    { text: 'WIP determination' },
+                    { text: 'Order confirmation' },
+                    { text: 'Order creation' }
+                ],
+                correct: [0, 1, 2],
+                type: 'multiple'
+            },
+            {
+                id: 37,
+                text: "Which controlling object is always a statistical object?",
+                options: [
+                    { text: 'Internal order' },
+                    { text: 'Profitability segment' },
+                    { text: 'Cost center' },
+                    { text: 'Profit center' }
+                ],
+                correct: [2],
+                type: 'single'
+            },
+            {
+                id: 38,
+                text: "When creating condition master records, what data properties does the condition type control? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Scales' },
+                    { text: 'Validity period' },
+                    { text: 'Currency' },
+                    { text: 'Sales organization' }
+                ],
+                correct: [0, 1],
+                type: 'multiple'
+            },
+            {
+                id: 39,
+                text: "Which application shows the current levels of stock, requirements, and receipts for a given material?",
+                options: [
+                    { text: 'MRP Live' },
+                    { text: 'MRP List' },
+                    { text: 'Stock overview' },
+                    { text: 'Stock requirements list' }
+                ],
+                correct: [2],
+                type: 'single'
+            },
+            {
+                id: 40,
+                text: "Which master records are directly assigned to a company code? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Material' },
+                    { text: 'Cost center' },
+                    { text: 'Activity type' },
+                    { text: 'Fixed asset' }
+                ],
+                correct: [1, 3],
+                type: 'multiple'
+            },
+            {
+                id: 41,
+                text: "When creating a warehouse number in the SAP enterprise structure, what organizational elements must be assigned? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Shipping point' },
+                    { text: 'Company code' },
+                    { text: 'Plant' },
+                    { text: 'Storage location' }
+                ],
+                correct: [2, 3],
+                type: 'multiple'
+            },
+            {
+                id: 42,
+                text: "In a warehouse, what represents the physical location where the goods are stored?",
+                options: [
+                    { text: 'Pallet' },
+                    { text: 'Storage location' },
+                    { text: 'Storage section' },
+                    { text: 'Storage bin' }
+                ],
+                correct: [3],
+                type: 'single'
+            },
+            {
+                id: 43,
+                text: "What objects are used to create a Purchasing Info Record? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'Company code' },
+                    { text: 'Purchasing organization' },
+                    { text: 'Material master' },
+                    { text: 'Vendor' },
+                    { text: 'Purchasing group' }
+                ],
+                correct: [1, 2, 3],
+                type: 'multiple'
+            },
+            {
+                id: 44,
+                text: "What are the suite qualities of the SAP Intelligent Enterprise? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'One workflow inbox' },
+                    { text: 'End-to-end process blueprints' },
+                    { text: 'Embedded analytics per product' },
+                    { text: 'Seamless user experience' },
+                    { text: 'Code-based applications' }
+                ],
+                correct: [1, 2, 3],
+                type: 'multiple'
+            },
+            {
+                id: 45,
+                text: "Which business process activities create a Financial Accounting (FI) document? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'Transfer stock from storage location to storage location' },
+                    { text: 'Post goods issue to a production order' },
+                    { text: 'Execute a depreciation run' },
+                    { text: 'Create a sales order' },
+                    { text: 'Transfer stock to another company code' }
+                ],
+                correct: [1, 2, 4],
+                type: 'multiple'
+            },
+            {
+                id: 46,
+                text: "What demand elements are evaluated during a MRP run?",
+                options: [
+                    { text: 'Sales orders' },
+                    { text: 'Planned orders' },
+                    { text: 'Scheduled lines' },
+                    { text: 'Purchase requisitions' }
+                ],
+                correct: [1],
+                type: 'single'
+            },
+            {
+                id: 47,
+                text: "What happens when you post a goods issue in a delivery document for a sales order? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'An EWM outbound delivery order is created' },
+                    { text: 'The billing due list is updated' },
+                    { text: 'An invoice is created' },
+                    { text: 'A material ledger document is created' },
+                    { text: 'Inventory quantities are updated' }
+                ],
+                correct: [1, 3, 4],
+                type: 'multiple'
+            },
+            {
+                id: 48,
+                text: "What function commits funds assigned to the budget of a WBS element?",
+                options: [
+                    { text: 'Availability control' },
+                    { text: 'Cost center accounting' },
+                    { text: 'Settlement processing' },
+                    { text: 'Profitability analysis' }
+                ],
+                correct: [0],
+                type: 'single'
+            },
+            {
+                id: 49,
+                text: "Which controlling objects can be settled by a settlement rule in SAP S/4HANA? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'Production order' },
+                    { text: 'Maintenance order' },
+                    { text: 'WBS element' },
+                    { text: 'Sales order' },
+                    { text: 'Profit center' }
+                ],
+                correct: [0, 1, 2],
+                type: 'multiple'
+            },
+            {
+                id: 50,
+                text: "When is backorder processing considered?",
+                options: [
+                    { text: 'When goods issue is performed' },
+                    { text: 'When order quantity is not fully confirmed' },
+                    { text: 'When planning transportation' },
+                    { text: 'When advanced available-to-promise is unavailable' }
+                ],
+                correct: [3],
+                type: 'single'
+            },
+            {
+                id: 51,
+                text: "Which backorder processing (BOP) strategy has first processing priority and is used to release confirmed stock to prioritize other orders to plan future stock needs?",
+                options: [
+                    { text: 'Lose' },
+                    { text: 'Gain' },
+                    { text: 'Win' },
+                    { text: 'Fill' }
+                ],
+                correct: [3],
+                type: 'single'
+            },
+            {
+                id: 52,
+                text: "Why would you enter your working hours using Cross-Application Time Sheet (CATS)? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'To record overtime' },
+                    { text: 'To request absence' },
+                    { text: 'To confirm activities' },
+                    { text: 'To maintain absence' },
+                    { text: 'To plan time' }
+                ],
+                correct: [0, 2, 4],
+                type: 'multiple'
+            },
+            {
+                id: 53,
+                text: "Which objects can be assigned to a profit center? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Sales order item' },
+                    { text: 'Purchase order item' },
+                    { text: 'Sales organization' },
+                    { text: 'Material' }
+                ],
+                correct: [0, 3],
+                type: 'multiple'
+            },
+            {
+                id: 54,
+                text: "What is the result of converting a planned order? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'A planned independent requirement' },
+                    { text: 'A purchase requisition' },
+                    { text: 'A purchase order' },
+                    { text: 'A production order' }
+                ],
+                correct: [1, 3],
+                type: 'multiple'
+            },
+            {
+                id: 55,
+                text: "What is a typical sequence of process steps in corrective maintenance?",
+                options: [
+                    { text: '1. Create task list\n2. Create notification\n3. Schedule notification\n4. Release order\n5. Confirm order' },
+                    { text: '6. Create notification\n7. Plan order\n8. Execute order\n9. Complete order\n10. Confirm order' },
+                    { text: '11. Create notification\n12. Plan order\n13. Release order\n14. Confirm order\n15. Complete order' },
+                    { text: '16. Create task list\n17. Create notification\n18. Schedule notification\n19. Confirm order\n20. Complete order' }
+                ],
+                correct: [2],
+                type: 'single'
+            },
+            {
+                id: 56,
+                text: "In the enterprise structure, what Human Resources organizational element is assigned directly to a company code?",
+                options: [
+                    { text: 'Personnel area' },
+                    { text: 'Position' },
+                    { text: 'Infotype' },
+                    { text: 'Organizational unit' }
+                ],
+                correct: [0],
+                type: 'single'
+            },
+            {
+                id: 57,
+                text: "What does a posting key control? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Debit/credit posting' },
+                    { text: 'Posting without tax allowed' },
+                    { text: 'Number range of document' },
+                    { text: 'Account type' }
+                ],
+                correct: [0, 3],
+                type: 'multiple'
+            },
+            {
+                id: 58,
+                text: "Which of the following are business partner categories in SAP S/4HANA? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'Individual' },
+                    { text: 'Group' },
+                    { text: 'Person' },
+                    { text: 'Corporation' },
+                    { text: 'Organization' }
+                ],
+                correct: [1, 2, 4],
+                type: 'multiple'
+            },
+            {
+                id: 59,
+                text: "Which of the following are selection modes for running MRP? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'MRP Live' },
+                    { text: 'Predictive MRP' },
+                    { text: 'Classical MRP' },
+                    { text: 'Regenerative MRP' },
+                    { text: 'Backorder Processing' }
+                ],
+                correct: [0, 2, 3],
+                type: 'multiple'
+            },
+            {
+                id: 60,
+                text: "You are creating a new company code that you want to assign to the group controlling area. Which characteristics must the new company code share with the other company codes already assigned to the controlling area? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Fiscal year variant' },
+                    { text: 'Operating chart of accounts' },
+                    { text: 'Currency' },
+                    { text: 'Posting period variant' }
+                ],
+                correct: [0, 1],
+                type: 'multiple'
+            },
+            {
+                id: 61,
+                text: "What information do you maintain for a general ledger account on company code level?",
+                options: [
+                    { text: 'Account group' },
+                    { text: 'Account type' },
+                    { text: 'Account number' },
+                    { text: 'Account currency' }
+                ],
+                correct: [1, 3],
+                type: 'multiple'
+            },
+            {
+                id: 62,
+                text: "What is one advantage of using stock transport orders instead of stock transfers?",
+                options: [
+                    { text: 'The ownership transfer and carrier delivery costs are delayed until goods receipt' },
+                    { text: 'Goods movements occur in one step, only at goods issue' },
+                    { text: 'The purchase orders that are generated by MRP can be converted to stock transport orders' },
+                    { text: 'The process of goods issue and goods receipt is monitored using the purchase order (PO) history' }
+                ],
+                correct: [0],
+                type: 'single'
+            },
+            {
+                id: 63,
+                text: "What technology elements supercharge the human experience when working with X and O data? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Machine learning predictions' },
+                    { text: 'Internet of Things (IoT)' },
+                    { text: 'Blockchain' },
+                    { text: 'Conversational AI' }
+                ],
+                correct: [0, 3],
+                type: 'multiple'
+            },
+            {
+                id: 64,
+                text: "What occurs when a maintenance technician changes the status of an order to technically completed? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'A time entry is posted for the maintenance technician' },
+                    { text: 'Incoming invoices for the order can be processed' },
+                    { text: 'Open purchase requisitions are marked for deletion' },
+                    { text: 'Reserved materials are released from the reservation' },
+                    { text: 'The orders settlement rule is executed' }
+                ],
+                correct: [0, 1, 3],
+                type: 'multiple'
+            },
+            {
+                id: 65,
+                text: "What master data in the activity type is used to post an activity allocation?",
+                options: [
+                    { text: 'Cost element' },
+                    { text: 'Internal order' },
+                    { text: 'WBS element' },
+                    { text: 'Statistical key figure' }
+                ],
+                correct: [0],
+                type: 'single'
+            },
+            {
+                id: 66,
+                text: "In a make-to-order process, a raw material needs to be issued from the warehouse to the manufacturing line. To which order will you post the goods issue?",
+                options: [
+                    { text: 'Outbound delivery order' },
+                    { text: 'Production order' },
+                    { text: 'Stock transport order' },
+                    { text: 'Sales order' }
+                ],
+                correct: [1],
+                type: 'single'
+            },
+            {
+                id: 67,
+                text: "What data must be linked to a cost center to derive segment accounting?",
+                options: [
+                    { text: 'Profit center' },
+                    { text: 'Cost center category' },
+                    { text: 'General ledger account' },
+                    { text: 'Controlling area' }
+                ],
+                correct: [0],
+                type: 'single'
+            },
+            {
+                id: 68,
+                text: "Which SAP Fiori application types use SAP HANA capabilities directly? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Analytical' },
+                    { text: 'Transactional' },
+                    { text: 'SAP GUI for HTML' },
+                    { text: 'Fact sheet' }
+                ],
+                correct: [0, 3],
+                type: 'multiple'
+            },
+            {
+                id: 69,
+                text: "What occurs when planning an internal project activity?",
+                options: [
+                    { text: 'Costs are recorded' },
+                    { text: 'Service is performed' },
+                    { text: 'Purchase requisitions are generated' },
+                    { text: 'Resources are committed' }
+                ],
+                correct: [3],
+                type: 'single'
+            },
+            {
+                id: 70,
+                text: "What document, when saved, creates a commitment for an internal order?",
+                options: [
+                    { text: 'Maintenance order' },
+                    { text: 'Production order' },
+                    { text: 'Goods receipt' },
+                    { text: 'Purchase order' }
+                ],
+                correct: [3],
+                type: 'single'
+            },
+            {
+                id: 71,
+                text: "What maintenance order elements are included in an operation? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'Object list' },
+                    { text: 'Settlement rule' },
+                    { text: 'Work center' },
+                    { text: 'Standard time' },
+                    { text: 'Activity type' }
+                ],
+                correct: [2, 3, 4],
+                type: 'multiple'
+            },
+            {
+                id: 72,
+                text: "Which end-to-end business processes are included with SAP S/4HANA in the context of the Intelligent Enterprise? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'Order to cash' },
+                    { text: 'Request to service' },
+                    { text: 'Source to pay' },
+                    { text: 'Design to build' },
+                    { text: 'Record to report' }
+                ],
+                correct: [0, 1, 4],
+                type: 'multiple'
+            },
+            {
+                id: 73,
+                text: "You want the SAP S/4HANA system to perform product cost planning. What master data is used to calculate the quantity structure? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Routing' },
+                    { text: 'Work center' },
+                    { text: 'Cost center' },
+                    { text: 'Bill of material' }
+                ],
+                correct: [0, 3],
+                type: 'multiple'
+            },
+            {
+                id: 74,
+                text: "At which steps in the order-to-cash process are postings made to the general ledger (G/L)? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Creating a sales order' },
+                    { text: 'Posting a goods issue' },
+                    { text: 'Saving an invoice' },
+                    { text: 'Creating an outbound delivery' }
+                ],
+                correct: [1, 2],
+                type: 'multiple'
+            },
+            {
+                id: 75,
+                text: "A goods issue is posted against a production order. What are the results? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'A warehouse task is created' },
+                    { text: 'The material reservation is reduced' },
+                    { text: 'Internal labor costs are posted' },
+                    { text: 'A material ledger document is created' },
+                    { text: 'Actual costs are updated in the production order' }
+                ],
+                correct: [1, 3, 4],
+                type: 'multiple'
+            },
+            {
+                id: 76,
+                text: "How can you post external labour costs to a network activity?",
+                options: [
+                    { text: 'By activity allocation' },
+                    { text: 'By service entry sheet' },
+                    { text: 'By settlement' },
+                    { text: 'By confirmation' }
+                ],
+                correct: [0, 1],
+                type: 'multiple'
+            },
+            {
+                id: 77,
+                text: "What types of procedures may be used to perform a cross-plant stock transfer? Note: There are 3 correct answers to this question",
+                options: [
+                    { text: 'Stock transport order without delivery' },
+                    { text: 'Slotting and rearrangement' },
+                    { text: 'Two-step procedure' },
+                    { text: 'One-step procedure' },
+                    { text: 'Material requirements planning' }
+                ],
+                correct: [0, 2, 3],
+                type: 'multiple'
+            },
+            {
+                id: 78,
+                text: "What activities can a manager complete using Manager Self-Service? Note: There are 2 correct answers to this question",
+                options: [
+                    { text: 'Control costs' },
+                    { text: 'Enroll in benefits' },
+                    { text: 'Enter time sheet' },
+                    { text: 'Manage budget' }
+                ],
+                correct: [2, 3],
+                type: 'multiple'
+            },
+            {
+                id: 79,
+                text: "What planning tool prioritizes sales order forecasting and strategically plans inventory buffers?",
+                options: [
+                    { text: 'MRP simulation and resolution' },
+                    { text: 'Demand-driven MRP (DDMRP)' },
+                    { text: 'Constraint-based planning (PP/DS)' },
+                    { text: 'Backorder processing (BOP)' }
+                ],
+                correct: [1],
+                type: 'single'
+            },
+            {
+                id: 80,
+                text: "When you post an accounting document, for which line item must you enter a transaction type?",
+                options: [
+                    { text: 'Tax account' },
+                    { text: 'Material account' },
+                    { text: 'Customer account' },
+                    { text: 'Asset account' }
+                ],
+                correct: [2],
+                type: 'single'
+            }
+        ];
+
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let userAnswers = {};
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function initializeQuestions() {
+            questions = JSON.parse(JSON.stringify(originalQuestions)); // Deep copy
+            questions = shuffle(questions);
+            questions.forEach((question, index) => {
+                question.id = index + 1; // Reassign IDs for navigation
+                const originalCorrect = [...question.correct]; // Store original correct indices
+                question.options = shuffle(question.options);
+                // Update correct answers to match new option indices
+                question.correct = originalCorrect.map(correctIndex => {
+                    const originalText = originalQuestions.find(q => q.text === question.text).options[correctIndex].text;
+                    return question.options.findIndex(o => o.text === originalText);
+                });
+            });
+        }
+
+        function renderQuestions() {
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+            questions.forEach((question, index) => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = `question-card bg-white p-6 rounded-lg shadow-md ${index === currentQuestionIndex ? '' : 'hidden'}`;
+                questionDiv.id = `question-${question.id}`;
+                questionDiv.innerHTML = `
+                    <h2 class="text-lg font-semibold mb-4">Question ${question.id}: ${question.text}</h2>
+                    <div class="space-y-2">
+                        ${question.options.map((option, optIndex) => `
+                            <label class="option-label flex items-center p-2 rounded ${userAnswers[question.id]?.includes(optIndex) ? 'selected' : ''}">
+                                <input type="${question.type === 'multiple' ? 'checkbox' : 'radio'}" 
+                                       name="q${question.id}" 
+                                       value="${optIndex}" 
+                                       class="mr-2" 
+                                       ${userAnswers[question.id]?.includes(optIndex) ? 'checked' : ''} 
+                                       ${question.answered ? 'disabled' : ''}>
+                                <span>${option.text}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(questionDiv);
+            });
+        }
+
+        function renderNavigation() {
+            const nav = document.getElementById('question-nav');
+            nav.innerHTML = '';
+            questions.forEach((question, index) => {
+                const navItem = document.createElement('a');
+                navItem.href = '#';
+                navItem.className = `block text-center py-1 px-2 rounded bg-gray-200 hover:bg-gray-300 ${index === currentQuestionIndex ? 'active' : ''}`;
+                navItem.textContent = question.id;
+                navItem.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    currentQuestionIndex = index;
+                    updateView();
+                });
+                nav.appendChild(navItem);
+            });
+        }
+
+        function updateView() {
+            renderQuestions();
+            renderNavigation();
+            updateButtons();
+        }
+
+        function updateButtons() {
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const submitBtn = document.getElementById('submit-btn');
+            prevBtn.disabled = currentQuestionIndex === 0;
+            nextBtn.classList.toggle('hidden', currentQuestionIndex === questions.length - 1);
+            submitBtn.classList.toggle('hidden', currentQuestionIndex !== questions.length - 1);
+        }
+
+        function handleOptionChange(e) {
+            const questionId = parseInt(e.target.name.replace('q', ''));
+            const value = parseInt(e.target.value);
+            const question = questions.find(q => q.id === questionId);
+
+            if (question.type === 'multiple') {
+                userAnswers[questionId] = userAnswers[questionId] || [];
+                if (e.target.checked) {
+                    userAnswers[questionId].push(value);
+                } else {
+                    userAnswers[questionId] = userAnswers[questionId].filter(v => v !== value);
+                }
+            } else {
+                userAnswers[questionId] = [value];
+            }
+            renderQuestions();
+        }
+
+        function calculateScore() {
+            let score = 0;
+            questions.forEach(question => {
+                const userAnswer = userAnswers[question.id] || [];
+                const correctAnswer = question.correct;
+                if (question.type === 'multiple') {
+                    const isCorrect = userAnswer.length === correctAnswer.length &&
+                                     userAnswer.every(val => correctAnswer.includes(val)) &&
+                                     correctAnswer.every(val => userAnswer.includes(val));
+                    if (isCorrect) score++;
+                } else {
+                    if (userAnswer[0] === correctAnswer[0]) score++;
+                }
+            });
+            return score;
+        }
+
+        function showResults() {
+            const score = calculateScore();
+            const resultsSection = document.getElementById('results-section');
+            const scoreDisplay = document.getElementById('score');
+            const resultsDetails = document.getElementById('results-details');
+            scoreDisplay.textContent = `You scored ${score} out of ${questions.length} (${((score / questions.length) * 100).toFixed(2)}%)`;
+            resultsDetails.innerHTML = '';
+            questions.forEach(question => {
+                const userAnswer = userAnswers[question.id] || [];
+                const isCorrect = question.type === 'multiple' ?
+                    userAnswer.length === question.correct.length &&
+                    userAnswer.every(val => question.correct.includes(val)) &&
+                    question.correct.every(val => userAnswer.includes(val)) :
+                    userAnswer[0] === question.correct[0];
+                const resultDiv = document.createElement('div');
+                resultDiv.className = `p-4 rounded ${isCorrect ? 'correct' : 'incorrect'}`;
+                resultDiv.innerHTML = `
+                    <p class="font-semibold">Question ${question.id}: ${question.text}</p>
+                    <p>Your Answer: ${userAnswer.length ? userAnswer.map(index => question.options[index].text).join(', ') : 'None'}</p>
+                    <p>Correct Answer: ${question.correct.map(index => question.options[index].text).join(', ')}</p>
+                `;
+                resultsDetails.appendChild(resultDiv);
+                question.answered = true;
+            });
+            resultsSection.classList.remove('hidden');
+            document.getElementById('questions-container').classList.add('hidden');
+            document.getElementById('prev-btn').classList.add('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+            document.getElementById('submit-btn').classList.add('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        document.getElementById('prev-btn').addEventListener('click', () => {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                updateView();
+            }
+        });
+
+        document.getElementById('next-btn').addEventListener('click', () => {
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                updateView();
+            }
+        });
+
+        document.getElementById('submit-btn').addEventListener('click', () => {
+            showResults();
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            initializeQuestions();
+            currentQuestionIndex = 0;
+            userAnswers = {};
+            questions.forEach(q => q.answered = false);
+            document.getElementById('results-section').classList.add('hidden');
+            document.getElementById('questions-container').classList.remove('hidden');
+            document.getElementById('prev-btn').classList.remove('hidden');
+            document.getElementById('next-btn').classList.remove('hidden');
+            updateView();
+        });
+
+        document.getElementById('questions-container').addEventListener('change', handleOptionChange);
+
+        // Initial setup
+        initializeQuestions();
+        updateView();
+    </script>
+</body>
+</html>
